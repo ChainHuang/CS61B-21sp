@@ -66,7 +66,7 @@ public class Board implements Iterable<Tile> {
      *  0 <= COL < size(). Returns null if there is no tile there. */
     public Tile tile(int col, int row) {
         return vtile(col, row, viewPerspective);
-    }
+    }//返回的是Tile对象
 
     /** Clear the board to empty and reset the score. */
     public void clear() {

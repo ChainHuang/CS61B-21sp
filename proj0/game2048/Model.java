@@ -5,7 +5,7 @@ import java.util.Observable;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author ChainHuang
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -50,7 +50,7 @@ public class Model extends Observable {
      *  */
     public Tile tile(int col, int row) {
         return board.tile(col, row);
-    }
+    }//返回的是Tile类型，不是int
 
     /** Return the number of squares on one side of the board.
      *  Used for testing. Should be deprecated and removed. */
@@ -106,6 +106,43 @@ public class Model extends Observable {
      *    value, then the leading two tiles in the direction of motion merge,
      *    and the trailing tile does not.
      * */
+    /* 单独对一列进行NORTH方向的移动合并处理 ,若board状态改变返回true */
+    //move()方法的作用：移动该tile到那个位置，若那里不为null则合并(不论值是否相等都合并）返回true，为null则直接移动返回false；已经帮我们完成了移动和合并操作，
+    //所以我们需要找到每个不为null的tile应该移动到哪个位置记为j（见google quiz!!!2种情况！！)
+    public boolean singleColHelper(int col){
+        boolean[] merged  = new boolean[]{false, false, false, false};
+        boolean changed = false;
+        //🎉从上往下遍历，能保证每个tile只需移动一次，也才能使用初步思路
+        for(int i = 2; i >= 0 ; i--){
+            if(board.tile(col, i) == null)//从上往下找到不为null的tile
+                continue;
+            //初步思路：往上，找到该tile初步应该移到的位置j--往上第一个不为null位置的下一个（不太准确，因为有可能都是null)
+            int j = i;
+            while(j+1 <= 3 && board.tile(col, j+1) == null){//⚠️j+1<=3应先判断,且因第二个用到了j+1,所以应判断j+1
+                j++;
+            }//该循环结束后，j要么是3（即从i+1~3都为null)，要么是往上第一个不为null位置的下一个位置.
+            Tile current = board.tile(col, i);
+            if(j == 3) {//if j==3
+                board.move(col, j, current);
+                changed = true;
+            }
+            else {//or j为往上第一个不为null的下一个位置
+                     //若j+1位置值 == i位置的值，且j+1位置还没有发生过合并，则j++, move到j位置(move会合并），并更新changed
+                    if (current.value() == board.tile(col, j+1).value() && merged[j+1] == false) {
+                        j++;
+                        board.move(col, j, current);
+                        merged[j] = true;
+                        score += current.value() * 2;
+                        changed = true;
+                    }  //若j+1位置的值 ！= i位置的值，或者值相等但已经发生过合并，则直接move到j位置
+                   else {
+                         board.move(col, j, current);
+                         changed = true;
+                    }
+            }
+        }
+        return changed;
+    }
     public boolean tilt(Side side) {
         boolean changed;
         changed = false;
@@ -113,7 +150,15 @@ public class Model extends Observable {
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
-
+        /* 切换side为NORTH */
+        board.setViewingPerspective(side);//this method will change the behavior ......
+       /* 以NORTH为主  一列一列*/
+        for(int i = 0; i < 4; i++){
+            if(singleColHelper(i) ){
+                changed = true;
+            }
+        }
+        board.setViewingPerspective(Side.NORTH);//
         checkGameOver();
         if (changed) {
             setChanged();
@@ -138,6 +183,12 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
+        for(int i = 0; i < b.size(); i++)
+            for(int j = 0; j < b.size(); j++)
+            {
+                if(b.tile(j, i) == null)
+                    return true;
+            }
         return false;
     }
 
@@ -148,6 +199,14 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
+        for(int i = 0; i < b.size(); i++)
+            for(int j = 0; j < b.size(); j++)
+            {
+                if(b.tile(j, i) == null)//必须先判断是否是null,否则会出现nullpointerError
+                    continue;
+                if(b.tile(j, i).value() == MAX_PIECE)
+                    return true;
+            }
         return false;
     }
 
@@ -159,6 +218,24 @@ public class Model extends Observable {
      */
     public static boolean atLeastOneMoveExists(Board b) {
         // TODO: Fill in this function.
+        if(emptySpaceExists(b))
+            return true;
+        //there are two adjacent tiles with same values:
+        for(int i = 0; i < b.size(); i++)
+            for(int j = 0; j < b.size(); j++)
+            {//原点是左下角,即b.tile(0,0）在左下角是标准直角坐标，所以要和top,right比较而不是和down，right
+                Tile current = b.tile(j, i);
+                if(i+1 < b.size()) {//要做该判断，因为要保证index不能越界
+                    Tile right = b.tile(j, i + 1);
+                    if(right != null && current.value() == right.value())//要用.value()，因为Tile还包含了col,row
+                        return true;
+                }
+                if(j+1 < b.size()) {
+                    Tile top = b.tile(j + 1, i);
+                    if (top != null && current.value() == top.value())
+                        return true;
+                }
+            }
         return false;
     }
 
